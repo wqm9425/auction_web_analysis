@@ -1,0 +1,33 @@
+cd#环境(spark-streaming-kafka的jar包对kafka和spark的版本有要求)
+spark 2.1.1
+kafka_2.10-0.8.2.1
+
+#启动zookeeper	
+sh zkServer.sh start
+
+#启动kafka   		
+sh bin/kafka-server-start.sh config/server.properties
+
+#新建TOPIC		
+sh kafka-topics.sh --create --topic cjs --replication-factor 1 --partitions 1 --zookeeper localhost:2181
+
+#启动消费者	
+sh kafka-console-consumer.sh --zookeeper localhost:2181 --topic cjs
+
+#启动生产者读log_file(需要修改路径)
+tail -f /usr/local/webserver/nginx/logs/access.log |kafka_2.10-0.8.2.1/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic cjs
+
+#redis(缓存)
+/usr/local/bin/redis-server
+
+#spark streaming实时处理
+spark/bin/spark-submit --packages org.apache.spark:spark-streaming-kafka-0-8-assembly_2.11:2.1.1 --master local[4] cjs/stream.py
+
+#爬取商品信息保存至sqlite3，状态是由这个爬虫获取的，定期运行才能刷新状态
+python item_info.py
+
+#更新计数,价格至pagecount表格，输出至json文件
+alias python='/usr/bin/python3'
+python save_to_db.py
+
+#网页显示table.html，点击计数排序
